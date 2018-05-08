@@ -1,4 +1,4 @@
-var isDev = false;
+var isDev = true;
 
 module.exports = {
     mode: isDev ? 'development' : 'production',

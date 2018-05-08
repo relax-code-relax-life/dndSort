@@ -242,6 +242,19 @@ var createExternalItem = function (config, className) {
     return $node;
 }
 
+var bindInstance = function (ins) {
+
+    var proto = sortList.prototype;
+    var methods = Object.getOwnPropertyNames(proto);
+
+    methods.forEach(method => {
+        if (method === 'constructor') return;
+        else if (typeof proto[method] === 'function') {
+            ins[method] = ins[method].bind(ins);
+        }
+    })
+}
+
 class sortList {
     /**
      *
@@ -281,17 +294,23 @@ class sortList {
         //delegateSortItem :  在$root上绑定事件，并没有对事件做selector筛选。
         //实例方法作为事件监听，会改变this
 
-        this.dragStartCb = this.dragStartCb.bind(this);
-        this.clear = this.clear.bind(this);
+        // this.dragStartCb = this.dragStartCb.bind(this);
+        // this.clear = this.clear.bind(this);
+        // this.mouseDownCb = this.mouseDownCb.bind(this);
+        // this.dragEndCb = this.dragEndCb.bind(this);
+        // this.dragOverCb = this.dragOverCb.bind(this);
+        // this.dispose = this.dispose.bind(this);
+
+        bindInstance(this);
 
         delegateSortItem({
             //拖动元素
-            mousedown: this.mouseDownCb.bind(this),
-            dragend: this.dragEndCb.bind(this),
+            mousedown: this.mouseDownCb,
+            dragend: this.dragEndCb,
 
             //放置元素
             dragenter: dragEnterCb,
-            dragover: this.dragOverCb.bind(this),
+            dragover: this.dragOverCb,
             drop: dropCb
         }, $root);
 
@@ -305,7 +324,6 @@ class sortList {
 
         this.hasHolder = config.hasHolder;
         this.checkDataset = config.checkDataset;
-
 
     }
 
@@ -516,6 +534,11 @@ class sortList {
         this.startIndex = undefined;
         // endIndex = undefined;
         // crossInsertNode = null;
+    }
+
+    dispose() {
+        this.clear();
+        undelegateSortItem({}, this.$root);
     }
 
 }
