@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        ul, li {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        main {
+            display: flex;
+        }
+        .list {
+            margin-right: 20px;
+        }
+
+        li, .list > div {
+            width: 200px;
+            height: 50px;
+            border: 2px solid black;
+            background-color: orange;
+            margin-bottom: 10px;
+            cursor: move;
+        }
+        #list3{
+            width: 500px;
+        }
+        #list3 li{
+            float: left;
+            margin-right: 20px;
+        }
+
+        .list .chosen {
+            background-color: grey;
+            border-color: grey;
+        }
+
+        .list .image {
+            background-color: grey;
+            border-color: red;
+        }
+
+        .list .holder {
+            border-color: red;
+        }
+
+
+        #list4 .dragChosen{
+            border: none;
+            background-color: red;
+            height: 2px;
+            overflow: hidden;
+        }
+
+        #list4 .note{
+            border: none;
+            background-color: #fff;
+            font-size: 12px;
+            line-height: 1em;
+        }
+    </style>
+</head>
+<body>
+
+<main>
+
+    <div class="list" id="list1">
+        <div>0_0</div>
+        <div>0_1</div>
+        <div>0_2</div>
+        <div>0_3</div>
+        <div>0_4</div>
+    </div>
+    <ul class="list" id="list2">
+        <li>1_0</li>
+        <li>1_1</li>
+        <li>1_2</li>
+        <li>1_3</li>
+        <li>1_4</li>
+        <li>1_5</li>
+    </ul>
+    <ul class="list" id="list3">
+        <li>2_0</li>
+        <li>2_1</li>
+        <li>2_2</li>
+        <li>2_3</li>
+        <li>2_4</li>
+        <li>2_5</li>
+    </ul>
+    <ul class="list" id="list4">
+        <li data-ignore-dnd="true" class="note">
+            已知bug: 当拖动时，占位元素面积过小，不能hover再占位元素上时，会出现不能拖动到第一个或最后一个
+        </li>
+        <li>4_0</li>
+        <li>4_1</li>
+        <li>4_2</li>
+        <li>4_3</li>
+    </ul>
+
+</main>
+
+<script src="./index.js"></script>
+<script>
+
+    var dnd = window.dndSort;
+
+    var $ = function (s) {
+        return document.querySelector(s)
+    }
+
+    dnd($('#list1'), {
+        clsChosen: 'chosen',
+        clsImage: 'image',
+        clsHolder: 'holder',
+        hasHolder:true,
+        dataTransfer: function (startIndex, sortItemEle, srcName) {
+            //用于传给#list2的template
+            return {
+                name: srcName,
+                html: sortItemEle.innerHTML
+            }
+        },
+    });
+    dnd($('#list2'), {
+        name:'list2',
+        template: function (data, srcName, tarName) {
+            if (data) {
+                return '<div>' +
+                    data.html + '<br/> from' + data.name +
+                    '</div>';
+            }
+        }
+    });
+
+    dnd($('#list3'), {
+        dropAllow:['list2']
+    });
+
+    dnd($('#list4'), {
+        checkDataset:true
+    });
+
+
+</script>
+
+
+</body>
+</html>

@@ -1,14 +1,16 @@
-var isDev = true;
+var isDev = false;
 
 module.exports = {
     mode: isDev ? 'development' : 'production',
-    entry: './src/index.js',
+    entry: {
+        'dist/index': './src/index.js',
+        'demo/index': './src/index.js'
+    },
     output: {
-        filename: 'index.js',
-        path: __dirname + '/dist',
+        filename: '[name].js',
+        path: __dirname ,
         library: 'dndSort',
-        libraryTarget: 'umd',
-        umdNamedDefine: false
+        libraryTarget: 'umd'
     },
     watch: isDev,
     module: {
@@ -18,9 +20,11 @@ module.exports = {
                 loader: 'babel-loader',
                 exclude: /node_modules/,
                 options: {
-                    presets: ['env']
+                    presets: ['env'],
+                    plugins: ["add-module-exports"]
                 }
             }
         ]
     }
 }
+

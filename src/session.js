@@ -8,11 +8,8 @@ session.clear = function (prop) {
 };
 
 session.set = function (obj) {
-
     state.hasData = true;
-
     Object.assign(state, obj);
-
 };
 
 session.get = function (prop) {
@@ -26,6 +23,10 @@ session.hasData = function () {
 var cnt = 0;
 session.getGuid = function () {
     return '__dragSort' + cnt++ + '_';
+}
+
+session._state= function () {
+    return state;
 }
 
 

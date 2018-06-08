@@ -13,7 +13,7 @@
  *      onDragEnd  ( startIndex,endIndex,srcName,tarName,fixFn) 当拖动结束,但排序无变化时,endIndex为undefined.
  *                                  fixFn: 当要配合scope.$refresh()时候,跨列表拖动的元素不在bowlder的托管下,$refresh之后会多一个元素,执行fixFn()进行删除。
  *
- *     transData(startIndex,sortItemEle,srcName)  需要返回JSON对象。 紧跟在sortStart后触发。
+ *     dataTransfer(startIndex,sortItemEle,srcName)  需要返回JSON对象。 紧跟在sortStart后触发。
  *     template(data,srcName,tarName)         当扩列表拖动时，当前列表收到其他列表的拖动，会触发该回调,传入data为transData返回的data
  *
  *     clsChosen:   选中时的样式: 默认dragChosen
@@ -63,13 +63,18 @@ var matchSortItem = function (node, sortRoot) {
 
 var closetItem = function (target, sortRoot) {
 
-    while (target && !matchSortItem(target, sortRoot)) {
+    do {
+
         if (target === sortRoot) {
             target = null;
             break;
         }
-        target = target.parentNode;
-    }
+        else if (matchSortItem(target, sortRoot)) {
+            break;
+        }
+
+    } while (target = target.parentNode)
+
     return target;
 };
 
@@ -77,7 +82,6 @@ var delegateSortItem = function (hash, $node) {
 
     Object.keys(hash).forEach(function (key) {
         $node.on(key, hash[key]);
-
     });
 
 };
@@ -114,12 +118,18 @@ var removeRange = function () {
 
 var parseDropRule = function (list) {
 
-    if (!isArray(list)) return '*';
+    if (list == null) return '*'
 
     var result = {
         name: [],
         fn: []
     }
+
+    if (!isArray(list)) {
+        result.name = [list + '']
+        return result;
+    }
+
     list.forEach(item => {
         if (typeof item === 'string') {
             result.name.push(item);
@@ -132,8 +142,8 @@ var parseDropRule = function (list) {
 }
 var checkDropRule = function (fromGroup, enterGroup) {
 
-    var dropAllow = fromGroup.dropAllow;
-    var drop = enterGroup.drop;
+    var dropAllow = fromGroup.drop;
+    var drop = enterGroup.dropAllow;
 
     var fromName = fromGroup.name;
     var enterName = enterGroup.name;
@@ -184,9 +194,10 @@ var dropCb = function (e) {
 
 };
 
-var triggerEvent = function (config, eventName, args) {
-    if (config[eventName]) {
-        return config[eventName].apply(null, args);
+var applyEvent = function (cb, args) {
+    // console.log(config, 'triggerevent');
+    if (cb) {
+        return cb.apply(null, args);
     }
 }
 var bubbleFind = function (target, sortNode, fn) {
@@ -198,9 +209,10 @@ var bubbleFind = function (target, sortNode, fn) {
     return result;
 }
 
-var onDragStart = function (config, checkDataset, startIndex, srcName, targetNode, sortNode) {
-    var result = triggerEvent(config, 'onDragStart', [startIndex, srcName, targetNode, sortNode]);
-    if (result !== false && checkDataset) {
+var onDragStart = function (ins, targetNode, sortNode) {
+
+    var result = applyEvent(ins.cb.onDragStart, [ins.startIndex, ins.group.name, targetNode, sortNode]);
+    if (result !== false && ins.checkDataset) {
         result = !bubbleFind(targetNode, sortNode, function (cur) {
             var $cur = $$(cur);
             return $cur.dataset('ignoreDrag') === 'true' || $cur.dataset('ignoreDnd') === 'true';
@@ -208,36 +220,49 @@ var onDragStart = function (config, checkDataset, startIndex, srcName, targetNod
     }
     return result;
 }
-var onDragOver = function (config, checkDataset, srcName, tarName, targetNode, sortNode) {
-    var result = triggerEvent('onDragOver', [srcName, tarName, targetNode, sortNode]);
-    if (result !== false && checkDataset) {
+var onDragOver = function (ins, fromGroup, targetNode, sortNode) {
+
+    var result = applyEvent(ins.cb.onDragOver, [fromGroup.name, ins.group.name, targetNode, sortNode]);
+
+    if (result !== false && ins.checkDataset) {
         result = !bubbleFind(targetNode, sortNode, function (cur) {
             var $cur = $$(cur);
-            return $cur.dataset('ignoreDrop') !== 'true' && $cur.dataset('ignoreDnd') !== 'true';
+            return $cur.dataset('ignoreDrop') === 'true' || $cur.dataset('ignoreDnd') === 'true';
         })
     }
     return result;
 }
-var onDragEnd = function (config, startIndex, endIndex, srcName, tarName) {
-    triggerEvent('onDragEnd', [startIndex, endIndex, srcName, tarName]);
+var onDragEnd = function (ins, startIndex, endIndex, srcName, tarName) {
+    console.log('trigger on DragEnd');
+    applyEvent(ins.cb.onDragEnd, [startIndex, endIndex, srcName, tarName]);
 }
 
-var onTransData = function (config, startIndex, sortItem, srcName) {
-    if (config.transData) return config.transData(startIndex, sortItem, srcName);
+var onTransData = function (ins) {
+    var cb = ins.cb.dataTransfer;
+    if (cb) {
+        return cb(ins.startIndex, ins.$drag[0], ins.group.name);
+    }
 };
 
-var createExternalItem = function (config, className) {
-    var $node;
-    if (config.template) {
-        $node = $$(
-            config.template(dragSession.get('data'), dragSession.get('group').name, dragSession.get('curName'))
-        );
+var createExternalItem = function (ins) {
+    var $node, cb = ins.cb.template;
+    var result = cb && cb(dragSession.get('data'), dragSession.get('group').name, dragSession.get('curName'));
+    var clsChosen = dragSession.get('curClassName').chosen;
+    if (result) {
+        if (typeof result === 'string') {
+            $node = $$.create(result);
+        }
+        else {
+            $node = $$(result);
+        }
     }
     else {
+        console.log('createExternalItem remove chosen', clsChosen)
         $node = dragSession.get('$clone');
+        $node.removeClass(clsChosen);
     }
 
-    $node.addClass(className);
+    $node.addClass(ins.className.chosen);
 
     return $node;
 }
@@ -255,22 +280,36 @@ var bindInstance = function (ins) {
     })
 }
 
+
 class sortList {
+
+
     /**
      *
      * @param node
-     * @param config { clsChosen,clsImage,clsHolder,name,drop,dropAllow,onDragStart,onDragOver,onDragEnd,transData,hasHolder,checkDataset }
+     * @param {object} config
+     * @param {string} config.clsChosen
+     * @param {string} config.clsImage
+     * @param {string} config.clsHolder
+     * @param {string} config.name
+     * @param {(string|function)[]} config.drop
+     * @param {(string|function)[]} config.dropAllow
+     * @param {function} config.onDragStart - ( startIndex,srcName,targetEle,sortItemEle ) return false,则取消
+     * @param {function} config.onDragOver - ( srcName,tarName,tarEle,sortItemEle )       return false,则禁止拖放;
+     * @param {function} config.onDragEnd -  ( startIndex,endIndex,srcName,tarName,fixFn ) 当拖动结束,但排序无变化时,endIndex为undefined.
+     * @param {function} config.dataTransfer - ( startIndex,sortItemEle,srcName )  需要返回JSON对象。 紧跟在sortStart后触发。
+     * @param {function} config.template
+     * @param {bool} config.hasHolder
+     * @param {bool} config.checkDataset
      */
-    constructor(node, config) {
 
-        console.log('constructor')
+    constructor(node, config) {
 
         var $root = this.$root = $$(node);
 
         $root.find('a,img,input,textarea').each(function (node) {
             node.draggable = false;
         });
-
 
         this.className = {
             chosen: config.clsChosen || 'dragChosen',
@@ -279,7 +318,7 @@ class sortList {
         };
 
 
-        this.groupInfo = {
+        this.group = {
             name: config.name || dragSession.getGuid(),
             drop: parseDropRule(config.drop),
             dropAllow: parseDropRule(config.dropAllow)
@@ -294,16 +333,9 @@ class sortList {
         //delegateSortItem :  在$root上绑定事件，并没有对事件做selector筛选。
         //实例方法作为事件监听，会改变this
 
-        // this.dragStartCb = this.dragStartCb.bind(this);
-        // this.clear = this.clear.bind(this);
-        // this.mouseDownCb = this.mouseDownCb.bind(this);
-        // this.dragEndCb = this.dragEndCb.bind(this);
-        // this.dragOverCb = this.dragOverCb.bind(this);
-        // this.dispose = this.dispose.bind(this);
-
         bindInstance(this);
 
-        delegateSortItem({
+        this.listeners = {
             //拖动元素
             mousedown: this.mouseDownCb,
             dragend: this.dragEndCb,
@@ -312,18 +344,22 @@ class sortList {
             dragenter: dragEnterCb,
             dragover: this.dragOverCb,
             drop: dropCb
-        }, $root);
-
-
-        this.cb = {
-            onDragOver: config.onDragOver,
-            onDragEnd: config.onDragEnd,
-            transData: config.transData,
-            template: config.template
         }
+        delegateSortItem(this.listeners, $root);
+
 
         this.hasHolder = config.hasHolder;
         this.checkDataset = config.checkDataset;
+
+        this.cb = {
+            onDragStart: config.onDragStart,
+            onDragOver: config.onDragOver,
+            onDragEnd: config.onDragEnd,
+            dataTransfer: config.dataTransfer,
+            template: config.template
+        }
+
+        this.isDispose = false;
 
     }
 
@@ -333,12 +369,11 @@ class sortList {
         var sortItem = closetItem(e.target, this.$root[0]);
         if (!sortItem) return;
 
-        console.log('mousedown')
 
         this.startIndex = nodeIndex(sortItem);
         // this.endIndex = undefined;
 
-        if (onDragStart(this.cb, this.checkDataset, this.startIndex, this.groupInfo.name, e.target, sortItem) === false) return;
+        if (onDragStart(this, e.target, sortItem) === false) return;
 
         sortItem.draggable = true;
 
@@ -348,8 +383,8 @@ class sortList {
         removeRange();
 
         delegateSortItem({
-            dragstart: this.dragStartCb.bind(this),
-            mouseup: this.clear.bind(this)
+            dragstart: this.dragStartCb,
+            mouseup: this.clear,
         }, this.$root);
 
         $$(document).on('drop', dropCb);
@@ -360,19 +395,26 @@ class sortList {
         dt.effectAllowed = 'copyMove';
 
         if (isFireFox) {
-            dt.setData('Text', this.startIndex); //firefox要设置一个值,否则实际不会拖动。
+            // dt.setData('Text', this.startIndex); //firefox要设置一个值,否则实际不会拖动。
+            dt.setData('Text', this.$clone.outerHtml());
         }
 
-        var name = this.groupInfo.name;
+        var name = this.group.name;
         var $drag = this.$drag;
         var $clone = this.$clone;
 
         dragSession.set({
-            data: onTransData(this.cb, this.startIndex, $drag[0], name),
-            group: this.groupInfo,
+            data: onTransData(this),
+            group: this.group,
             $clone: $clone,
             $drag: $drag,
-            curName: name
+            curName: name,       //当前操作列表，在dragOver中会重置。
+            curClassName: this.className,     //在dragOver中会重置。用于在createExternalItem中删除原clsChosen，感觉放在这里不太合适，暂时没有更好的方案，先放在这里。
+            prevSortItem: null   //在dragOver中重置，
+                                 //  逻辑上对dragover的回调处理一次就可以了，
+                                 //  并且当元素clone.chosen的height特别小的时候，多次响应dragover会导致clone闪烁，
+                                 //  通过比对前一次preSortItem，避免多次响应dragover
+
         });
 
         var className = this.className;
@@ -391,6 +433,7 @@ class sortList {
                 $drag.addClass(className.holder);
             }
             else {
+                console.log('hide drag');
                 $drag.insertAfter($clone).hide();
             }
 
@@ -406,7 +449,7 @@ class sortList {
             return;
         }//不是当前插件托管的拖动
 
-        // console.log('dragover');
+        console.log('dragover');
 
         var dt = e.dataTransfer;
         dt.dropEffect = 'move';
@@ -414,60 +457,92 @@ class sortList {
 
 
         var sortItem = closetItem(e.target, this.$root[0]);
-
         //如果over的是ul，则此处sortItem为Null
-        //此处不用判断sortItem==e.target.
-        //因为不管是触发的那个子元素的dragover,当前都已经冒泡到了li,当前处理元素为Li
 
+        var prevSortItem = dragSession.get('prevSortItem');
+        if (prevSortItem === sortItem) {
+            return;
+        }
+        else {
+            console.log(prevSortItem,sortItem);
+
+            dragSession.set({
+                prevSortItem: sortItem
+            })
+        }
 
         var $operator = dragSession.get('$clone');
         if (sortItem === $operator[0]) return;
 
         var $drag = this.$drag;
+        var fromGroup = dragSession.get('group');
 
         if (!$drag) { //拖动源不是当前列表:
 
-            if (!checkDropRule(dragSession.get('group'), this.groupInfo)) {
+            // console.log('checkRule',checkDropRule(fromGroup, this.group))
+            if (!checkDropRule(fromGroup, this.group)) {
                 dt.dropEffect = 'none';
                 return;
             }
         }
 
-        var fromGroup = dragSession.get('group');
-
-        if (sortItem && onDragOver(this.cb, this.checkDataset, fromGroup.name, this.groupInfo.name, sortItem && e.target, sortItem) === false) {
+        if (sortItem && onDragOver(this, fromGroup, sortItem && e.target, sortItem) === false) {
+            console.log('dragover: false');
             dt.dropEffect = 'none';
             return;
         }
 
-        var isCross = dragSession.get('curName') !== this.groupInfo.name;
+        var isCross = dragSession.get('curName') !== this.group.name;
+        var isSelf = fromGroup.name === this.group.name;
+
 
         if (isCross) {
             //首次拖入到其他列表中的情况。
-            dragSession.get('$clone').remove();
+            $operator.remove();
 
             //从当前列表拖到其他列表 再拖回来
-            $operator = fromGroup.name === this.groupInfo.name ? this.$clone : createExternalItem(this.cb, this.className.chosen);
+            $operator = isSelf ? this.$clone : createExternalItem(this);
             dragSession.set({
                 $clone: $operator,
-                curName: this.groupInfo.name
+                curName: this.group.name,
+                curClassName: this.className
             });
         }
 
-        if (!isCross && !sortItem) return; //当前列表拖动 且 hover ul
+        if (!isCross && !sortItem) return; //hover ul & 当前列表
 
-        if (!sortItem) { //跨列表拖动 且 over的ul
+        if (!sortItem) { //hover ul & 跨列表
             this.$root.prepend($operator);
             return;
         }
 
-
         var $sortItem = $$(sortItem);
         var $prev = $sortItem.prev();
+        var $next = $sortItem.next();
 
-        if (this.$drag && (sortItem === this.$drag[0] || (this.hasHolder && $prev[0] === this.$drag[0]))) {
+
+        /*
+             *在前面已经先判断了，sortItem为clone，则直接返回。
+             *
+             * if 拖动当前列表
+             *       1. sortItem即选中元素，删除clone (只有占位的时候才可能)
+             *       2. 选中元素占位 && 前一个元素为选中元素 , 删除clone, (不占位的时候，前一个为选中元素，则继续一个if,因为占位的时候，视觉上先加到前面感觉更合理)
+             *       3. 选中元素占位 && 前一个元素是clone， 下一个元素是选中元素
+             *       then 删除clone
+             * else if 前一个元素是clone
+             *       then clone加到sortItem之后
+             * else clone加到sortItem之前
+              */
+        if (isSelf &&
+            (
+                sortItem === this.$drag[0] ||
+                (this.hasHolder && $prev[0] === this.$drag[0]) ||
+                (this.hasHolder && $prev[0] === $operator[0] && $next[0] === this.$drag[0])
+            )
+        ) {
             console.log('remove clone');
-            this.$clone.remove();
+            // this.$clone.remove();
+            $operator.remove();
             return;
         }
 
@@ -492,14 +567,17 @@ class sortList {
         var $operator = dragSession.get('$clone');
         var $oriDrag = dragSession.get('$drag');
 
-        var endIndex = nodeIndex($operator[0], $oriDrag[0]);
+        console.log($operator.parent());
+        var endIndex = $operator.parent().length === 0 ? this.startIndex : nodeIndex($operator[0], $oriDrag[0]);
+        var startIndex = this.startIndex;
 
         var fromName = dragSession.get('group').name;
         var curName = dragSession.get('curName');
 
         var isCross = fromName !== curName;
 
-        if (isCross || this.startIndex !== endIndex) {
+        console.log(startIndex, endIndex);
+        if (isCross || startIndex !== endIndex) {
             // console.log('isCross', isCross, oriDragEle);
             if (isCross) {
                 $oriDrag.remove();
@@ -511,7 +589,7 @@ class sortList {
                 $oriDrag.show();
             }
 
-            onDragEnd(this.startIndex, endIndex, fromName, curName);
+            onDragEnd(this, startIndex, endIndex, fromName, curName);
 
         }
         else {
@@ -523,27 +601,39 @@ class sortList {
 
     clear() {
         // console.log('clear');
-        undelegateSortItem({dragstart: this.dragStartCb, mouseup: this.clear}, this.$root);
+        undelegateSortItem({
+            dragstart: this.dragStartCb,
+            mouseup: this.clear
+        }, this.$root);
         $$(document).off('drop', dropCb);
 
-        this.$drag[0].draggable = false;
-        this.$drag.removeClass(this.className.holder);
+        if (this.$drag) {
+            this.$drag[0].draggable = false;
+            this.$drag.removeClass(this.className.holder);
+        }
+
         this.$clone = this.$drag = null;
 
         dragSession.clear();
         this.startIndex = undefined;
         // endIndex = undefined;
         // crossInsertNode = null;
+
+        this.isDispose = true;
     }
 
     dispose() {
-        this.clear();
-        undelegateSortItem({}, this.$root);
+        if (!this.isDispose) {
+            this.clear();
+            undelegateSortItem(this.listeners, this.$root);
+        }
     }
 
 }
 
 
 export default function (node, config) {
-    new sortList(node, config);
+    return new sortList(node, config).dispose
 }
+
+
