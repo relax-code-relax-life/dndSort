@@ -1,6 +1,6 @@
 {
-  "name": "dndSort",
-  "version": "1.0.0",
+  "name": "dndsort",
+  "version": "1.0.1",
   "main": "dndSort.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

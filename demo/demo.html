@@ -13,7 +13,9 @@
             display: flex;
         }
         .list {
-            margin-right: 20px;
+            margin-right: 10px;
+            border-right: 1px solid grey;
+            padding-right: 10px;
         }
 
         li, .list > div {
@@ -23,13 +25,6 @@
             background-color: orange;
             margin-bottom: 10px;
             cursor: move;
-        }
-        #list3{
-            width: 500px;
-        }
-        #list3 li{
-            float: left;
-            margin-right: 20px;
         }
 
         .list .chosen {
@@ -47,6 +42,17 @@
         }
 
 
+        #list2 .dragChosen{
+            border-color: orange;
+            border-bottom-color: #000;
+        }
+        #list3{
+            width: 430px;
+        }
+        #list3 li{
+            float: left;
+            margin-right: 10px;
+        }
         #list4 .dragChosen{
             border: none;
             background-color: red;
@@ -77,9 +83,6 @@
         <li>1_0</li>
         <li>1_1</li>
         <li>1_2</li>
-        <li>1_3</li>
-        <li>1_4</li>
-        <li>1_5</li>
     </ul>
     <ul class="list" id="list3">
         <li>2_0</li>
@@ -91,7 +94,7 @@
     </ul>
     <ul class="list" id="list4">
         <li data-ignore-dnd="true" class="note">
-            已知bug: 当拖动时，占位元素面积过小，不能hover再占位元素上时，会出现不能拖动到第一个或最后一个
+            已知bug: 在拖动时，占位元素面积过小，不能hover在占位元素上时，会出现不能拖动到第一个或最后一个的情况。
         </li>
         <li>4_0</li>
         <li>4_1</li>

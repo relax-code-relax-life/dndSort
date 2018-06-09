@@ -421,7 +421,10 @@ class sortList {
 
         $drag.addClass(className.image);
 
-        // console.log('drag start');
+
+        //拖动过程中，不断操作的是cloneEle，
+        //  如果hasHolder，则后续拖动时再添加cloneEle，
+        //  else 先添加cloneEle，隐藏掉dragEle
 
         //hasHolder : dragEle添加holder样式
         //else :    添加cloneEle,隐藏dragEle
@@ -449,7 +452,7 @@ class sortList {
             return;
         }//不是当前插件托管的拖动
 
-        console.log('dragover');
+        console.log('dragover=============');
 
         var dt = e.dataTransfer;
         dt.dropEffect = 'move';
@@ -464,15 +467,17 @@ class sortList {
             return;
         }
         else {
-            console.log(prevSortItem,sortItem);
-
             dragSession.set({
                 prevSortItem: sortItem
             })
         }
+        console.log('dragover valid', sortItem);
 
         var $operator = dragSession.get('$clone');
-        if (sortItem === $operator[0]) return;
+        if (sortItem === $operator[0]) {
+            console.log('hover clone');
+            return;
+        }
 
         var $drag = this.$drag;
         var fromGroup = dragSession.get('group');
@@ -524,33 +529,56 @@ class sortList {
         /*
              *在前面已经先判断了，sortItem为clone，则直接返回。
              *
-             * if 拖动当前列表
-             *       1. sortItem即选中元素，删除clone (只有占位的时候才可能)
-             *       2. 选中元素占位 && 前一个元素为选中元素 , 删除clone, (不占位的时候，前一个为选中元素，则继续一个if,因为占位的时候，视觉上先加到前面感觉更合理)
-             *       3. 选中元素占位 && 前一个元素是clone， 下一个元素是选中元素
-             *       then 删除clone
-             * else if 前一个元素是clone
-             *       then clone加到sortItem之后
-             * else clone加到sortItem之前
+
+
               */
-        if (isSelf &&
-            (
-                sortItem === this.$drag[0] ||
-                (this.hasHolder && $prev[0] === this.$drag[0]) ||
-                (this.hasHolder && $prev[0] === $operator[0] && $next[0] === this.$drag[0])
-            )
-        ) {
-            console.log('remove clone');
-            // this.$clone.remove();
-            $operator.remove();
-            return;
+        if (isSelf) {
+
+            if (sortItem === this.$drag[0] || (
+                    this.hasHolder && $prev[0] === $operator[0] && $next[0] === this.$drag[0])
+            ) {
+                // 1. sortItem即选中元素(只有占位的时候才可能)
+                // 2. 选中元素占位 && 前一个元素是clone， 下一个元素是选中元素
+                console.log('remove clone');
+                $operator.remove();
+                return;
+            }
+            else if ($prev[0] === this.$drag[0]) {
+                //前一个元素是选中元素
+                //  if hasHolder: clone添加到sortItem之后
+                // else prev取再前一个元素
+                if (this.hasHolder) {
+                    $sortItem.insertAfter($operator);
+                    return;
+                }
+                else {
+                    $prev = $prev.prev();
+                }
+            }
+
         }
 
-        // console.log('dragover insert');
+        console.log('dragover insert :', $prev[0] === $operator[0] ? 'after' : 'before', $prev[0], $operator[0]);
 
+        if ($prev[0] === this.$drag[0]) {
+            if (this.hasHolder) {
+                $sortItem.insertAfter($operator);
+                return;
+            }
+            else {
+                $prev = $prev.prev();
+            }
+        }
+
+        /*
+         * if 前一个元素是clone
+         *       then clone加到sortItem之后
+         * else clone加到sortItem之前
+         */
         if ($prev[0] === $operator[0]) {
             $sortItem.insertAfter($operator);
         }
+
         else {
             $sortItem.insertBefore($operator);
         }
