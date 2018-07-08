@@ -481,6 +481,7 @@ class sortList {
 
         var $drag = this.$drag;
         var fromGroup = dragSession.get('group');
+        console.log('fromGroup:', fromGroup);
 
         if (!$drag) { //拖动源不是当前列表:
 
@@ -560,15 +561,6 @@ class sortList {
 
         console.log('dragover insert :', $prev[0] === $operator[0] ? 'after' : 'before', $prev[0], $operator[0]);
 
-        if ($prev[0] === this.$drag[0]) {
-            if (this.hasHolder) {
-                $sortItem.insertAfter($operator);
-                return;
-            }
-            else {
-                $prev = $prev.prev();
-            }
-        }
 
         /*
          * if 前一个元素是clone
