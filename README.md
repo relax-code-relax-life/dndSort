@@ -21,7 +21,7 @@
 ```
 
 # demo
-[http://wangwl.net/static/demo/dndSort/demo.html](http://wangwl.net/static/demo/dndSort/demo.html)
+[http://wangwl.net/static/demo/dndsort/demo.html](http://wangwl.net/static/demo/dndsort/demo.html)
 
 # 函数签名
 
